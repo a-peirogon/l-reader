@@ -6,10 +6,8 @@ const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.3, 1.6, 2.0, 2.5]
 
 export function PdfPanel() {
   const { pdf, setSnapActive, setPendingSnap, addMessage, settings } = useLectioStore()
-  const { loadFile, captureArea, setPdfPage, setPdfScale } = usePdf()
+  const { setContainer, loadFile, captureArea, setPdfPage, setPdfScale } = usePdf()
 
-  // PdfPanel owns the viewport DOM ref
-  const viewportRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const snapState = useRef({
     drawing: false,
@@ -19,47 +17,49 @@ export function PdfPanel() {
     pageN: 0,
   })
 
+  // Register the viewport div with the hook via ref callback
+  const viewportRefCallback = useCallback((el: HTMLDivElement | null) => {
+    setContainer(el)
+  }, [setContainer])
+
   // File load
   const handleFile = useCallback((file: File | null) => {
     if (!file || file.type !== 'application/pdf') return
-    if (!viewportRef.current) return
-    loadFile(file, viewportRef.current)
+    loadFile(file)
   }, [loadFile])
 
   // Navigation
-  const prevPage = () => pdf.currentPage > 1 && setPdfPage(pdf.currentPage - 1)
-  const nextPage = () => pdf.currentPage < pdf.totalPages && setPdfPage(pdf.currentPage + 1)
+  const prevPage = useCallback(() => {
+    useLectioStore.getState().setPdfPage(Math.max(1, useLectioStore.getState().pdf.currentPage - 1))
+  }, [])
+  const nextPage = useCallback(() => {
+    const s = useLectioStore.getState()
+    s.setPdfPage(Math.min(s.pdf.totalPages, s.pdf.currentPage + 1))
+  }, [])
 
   const cycleZoom = () => {
     const idx = ZOOM_STEPS.findIndex((s) => s >= pdf.scale)
-    const next = ZOOM_STEPS[(idx + 1) % ZOOM_STEPS.length]
-    setPdfScale(next)
+    setPdfScale(ZOOM_STEPS[(idx + 1) % ZOOM_STEPS.length])
   }
-
   const zoomBy = (delta: number) => {
-    const newScale = Math.max(0.5, Math.min(2.5, pdf.scale + delta))
-    setPdfScale(newScale)
+    setPdfScale(Math.max(0.5, Math.min(2.5, pdf.scale + delta)))
   }
-
-  // Scroll to current page
-  useEffect(() => {
-    const el = document.getElementById(`pw-${pdf.currentPage}`)
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [pdf.currentPage])
 
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'TEXTAREA' || tag === 'INPUT') return
-      if (e.key === 's' || e.key === 'S') setSnapActive(!pdf.snapActive)
-      if (e.key === 'Escape' && pdf.snapActive) setSnapActive(false)
+      if (e.key === 's' || e.key === 'S') {
+        useLectioStore.getState().setSnapActive(!useLectioStore.getState().pdf.snapActive)
+      }
+      if (e.key === 'Escape') useLectioStore.getState().setSnapActive(false)
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextPage()
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [pdf.snapActive, pdf.currentPage, pdf.totalPages])
+  }, [nextPage, prevPage])
 
   // Drag & drop
   const handleDragOver = (e: React.DragEvent) => e.preventDefault()
@@ -68,71 +68,67 @@ export function PdfPanel() {
     handleFile(e.dataTransfer.files[0])
   }
 
-  // Snap mouse events
-  const getPos = (e: MouseEvent, el: HTMLElement) => {
-    const r = el.getBoundingClientRect()
-    return { x: e.clientX - r.left, y: e.clientY - r.top }
-  }
-
+  // Snap mouse events — attached to window so they survive across page wraps
   useEffect(() => {
-    if (!viewportRef.current) return
-    const viewport = viewportRef.current
+    const getPos = (e: MouseEvent, el: HTMLElement) => {
+      const r = el.getBoundingClientRect()
+      return { x: e.clientX - r.left, y: e.clientY - r.top }
+    }
 
     const onDown = (e: MouseEvent) => {
-      if (!pdf.snapActive) return
+      if (!useLectioStore.getState().pdf.snapActive) return
       const wrap = (e.target as HTMLElement).closest('.page-wrap') as HTMLElement | null
       if (!wrap) return
       const canvas = wrap.querySelector('canvas') as HTMLCanvasElement
       const pageN = parseInt(canvas?.dataset.page || '0')
       const pos = getPos(e, wrap)
 
-      snapState.current = { drawing: true, start: pos, rectEl: null, canvas, pageN }
-
       const rect = document.createElement('div')
-      rect.style.cssText = `position:absolute;border:2px solid #fff;background:rgba(255,255,255,.07);border-radius:2px;pointer-events:none;z-index:10;`
+      rect.style.cssText =
+        'position:absolute;border:2px solid #fff;background:rgba(255,255,255,.07);border-radius:2px;pointer-events:none;z-index:10;'
       rect.style.left = pos.x + 'px'
       rect.style.top = pos.y + 'px'
-      rect.style.width = '0px'
-      rect.style.height = '0px'
       wrap.appendChild(rect)
-      snapState.current.rectEl = rect
+
+      snapState.current = { drawing: true, start: pos, rectEl: rect, canvas, pageN }
     }
 
     const onMove = (e: MouseEvent) => {
-      if (!snapState.current.drawing || !snapState.current.rectEl) return
-      const wrap = (e.target as HTMLElement).closest('.page-wrap') as HTMLElement | null
-      if (!wrap) return
+      const { drawing, rectEl, start } = snapState.current
+      if (!drawing || !rectEl) return
+      const wrap = rectEl.parentElement as HTMLElement
       const pos = getPos(e, wrap)
-      const { start, rectEl } = snapState.current
       const l = Math.min(start.x, pos.x)
       const t = Math.min(start.y, pos.y)
-      const w = Math.abs(pos.x - start.x)
-      const h = Math.abs(pos.y - start.y)
       rectEl.style.left = l + 'px'
       rectEl.style.top = t + 'px'
-      rectEl.style.width = w + 'px'
-      rectEl.style.height = h + 'px'
+      rectEl.style.width = Math.abs(pos.x - start.x) + 'px'
+      rectEl.style.height = Math.abs(pos.y - start.y) + 'px'
     }
 
     const onUp = (e: MouseEvent) => {
-      if (!snapState.current.drawing) return
+      const { drawing, start, rectEl, canvas, pageN } = snapState.current
+      if (!drawing) return
       snapState.current.drawing = false
-      const { start, rectEl, canvas, pageN } = snapState.current
-      const wrap = rectEl?.parentElement
-      if (!wrap) return
 
-      const pos = getPos(e, wrap)
-      const l = Math.min(start.x, pos.x)
-      const t = Math.min(start.y, pos.y)
-      const w = Math.abs(pos.x - start.x)
-      const h = Math.abs(pos.y - start.y)
+      const wrap = rectEl?.parentElement as HTMLElement | null
       rectEl?.remove()
       snapState.current.rectEl = null
 
-      if (w > 8 && h > 8 && canvas) {
-        const dataUrl = captureArea(canvas, l, t, w, h, pageN)
-        if (settings.autoSnap) {
-          addMessage({
+      if (!wrap || !canvas) return
+      const pos = getPos(e, wrap)
+      const w = Math.abs(pos.x - start.x)
+      const h = Math.abs(pos.y - start.y)
+
+      if (w > 8 && h > 8) {
+        const dataUrl = captureArea(
+          canvas,
+          Math.min(start.x, pos.x),
+          Math.min(start.y, pos.y),
+          w, h, pageN
+        )
+        if (useLectioStore.getState().settings.autoSnap) {
+          useLectioStore.getState().addMessage({
             id: `snap-${Date.now()}`,
             role: 'user',
             type: 'snap',
@@ -144,18 +140,18 @@ export function PdfPanel() {
         }
       }
 
-      setSnapActive(false)
+      useLectioStore.getState().setSnapActive(false)
     }
 
-    viewport.addEventListener('mousedown', onDown)
+    window.addEventListener('mousedown', onDown)
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     return () => {
-      viewport.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousedown', onDown)
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
-  }, [pdf.snapActive, captureArea, settings.autoSnap, setSnapActive, addMessage])
+  }, [captureArea])
 
   const hasPdf = pdf.totalPages > 0
   const zoomLabel = Math.round(pdf.scale * 100) + '%'
@@ -192,7 +188,6 @@ export function PdfPanel() {
           {hasPdf && (
             <>
               <div className="mx-0.5 h-4 w-px bg-[#1e1e1e]" />
-              {/* Page nav */}
               <div className="flex h-7 items-center overflow-hidden rounded-lg border border-[#1e1e1e] bg-[#0e0e0e]">
                 <button
                   onClick={prevPage}
@@ -258,19 +253,16 @@ export function PdfPanel() {
         </div>
       </div>
 
-      {/* Viewport */}
+      {/* Viewport — ref callback registers it with the hook */}
       <div
-        ref={viewportRef}
-        className="flex flex-1 flex-col items-center gap-5 overflow-auto px-5 py-6 pb-20"
+        ref={viewportRefCallback}
+        className="flex flex-1 flex-col items-center overflow-auto px-5 py-6 pb-20"
         style={{
           background: '#000',
-          perspective: '1800px',
-          perspectiveOrigin: '50% 40%',
           scrollbarWidth: 'thin',
           scrollbarColor: '#222 transparent',
         }}
       >
-        {/* Drop zone — shown only when no PDF loaded */}
         {!hasPdf && (
           <div
             className="absolute inset-[42px_0_0_0] flex cursor-pointer flex-col items-center justify-center gap-3"
@@ -293,7 +285,7 @@ export function PdfPanel() {
 
       {/* Floating nav */}
       {hasPdf && (
-        <div className="absolute bottom-[18px] left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[#1f1f1f] bg-[#111] px-2 py-1.5 opacity-0 shadow-[0_6px_20px_rgba(0,0,0,.5)] transition-opacity hover:opacity-100 [.pdf-panel:hover_&]:opacity-100">
+        <div className="absolute bottom-[18px] left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[#1f1f1f] bg-[#111] px-2 py-1.5 opacity-0 shadow-[0_6px_20px_rgba(0,0,0,.5)] transition-opacity hover:opacity-100">
           <button onClick={() => zoomBy(-0.2)} className="flex h-7 w-7 items-center justify-center rounded-full text-[#666] transition-all hover:bg-white/5 hover:text-[#ccc]">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
           </button>
@@ -311,7 +303,7 @@ export function PdfPanel() {
         </div>
       )}
 
-      {/* Hidden file input shared with ChatPanel */}
+      {/* Shared file input used by ChatPanel's PDF open button */}
       <input
         id="file-input-chat"
         type="file"
