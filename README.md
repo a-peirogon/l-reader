@@ -1,23 +1,13 @@
-# Lectio
+# l'reader
 
 PDF reader with AI chat assistant. Built with React + TypeScript + Tailwind.
-
-## Stack
-
-- **Frontend**: React 18 + TypeScript + Tailwind CSS
-- **State**: Zustand
-- **PDF**: pdfjs-dist (client-side, no server needed)
-- **AI**: Claude (Anthropic) + Gemini (Google AI Studio) — direct browser calls
-- **Deploy**: Vercel (static SPA, zero backend)
-
-## Getting Started
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Project Structure
+## Structure
 
 ```
 src/
@@ -48,29 +38,3 @@ src/
 ├── main.tsx                    # Entry point
 └── index.css                   # Tailwind base + global overrides
 ```
-
-## API Keys
-
-Keys are entered directly in the chat panel (never leave the browser). No backend required.
-
-- **Claude**: get yours at [console.anthropic.com](https://console.anthropic.com)
-- **Gemini**: get yours at [aistudio.google.com](https://aistudio.google.com)
-
-## Deploy to Vercel
-
-```bash
-npm run build
-# push to GitHub, import in Vercel — done
-```
-
-No environment variables needed. All API calls go browser → AI provider directly.
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `S` | Toggle snap/capture tool |
-| `Esc` | Cancel snap |
-| `← / ↑` | Previous page |
-| `→ / ↓` | Next page |
-| `Ctrl+Enter` | Send message |
