@@ -17,11 +17,6 @@ export function PdfPanel() {
     pageN: 0,
   })
 
-  // Register the viewport div with the hook via ref callback
-  const viewportRefCallback = useCallback((el: HTMLDivElement | null) => {
-    setContainer(el)
-  }, [setContainer])
-
   // File load — accepts by MIME type OR by extension (drag-and-drop may omit MIME)
   const handleFile = useCallback((file: File | null) => {
     if (!file) return
@@ -63,6 +58,76 @@ export function PdfPanel() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [nextPage, prevPage])
+
+  // ── Scroll viewport to the target page when currentPage changes via buttons ──
+  // We store the viewport element in a separate ref so the effect can access it
+  // without being coupled to the ref-callback pattern used by usePdf.
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+
+  const viewportRefCallback = useCallback((el: HTMLDivElement | null) => {
+    viewportRef.current = el
+    setContainer(el)
+  }, [setContainer])
+
+  // ── Scroll-to-page (buttons/keyboard) + scroll listener (mouse wheel) ─────
+  // A ref flag prevents the scroll listener from overwriting currentPage while
+  // a programmatic smooth-scroll is still animating.
+  const programmingScrollRef = useRef(false)
+  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport || !pdf.totalPages) return
+      const pageEl = viewport.querySelector(`#pw-${pdf.currentPage}`) as HTMLElement | null
+      if (!pageEl) return
+
+        // Suppress the scroll listener for the duration of the animation (~600ms)
+        programmingScrollRef.current = true
+        if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current)
+          suppressTimerRef.current = setTimeout(() => {
+            programmingScrollRef.current = false
+          }, 600)
+
+          viewport.scrollTo({ top: pageEl.offsetTop - 28, behavior: 'smooth' })
+  }, [pdf.currentPage, pdf.totalPages])
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport || !pdf.totalPages) return
+
+      const onScroll = () => {
+        // Ignore scroll events triggered by programmatic scrollTo()
+        if (programmingScrollRef.current) return
+
+          const pages = viewport.querySelectorAll<HTMLElement>('.page-wrap')
+          if (!pages.length) return
+
+            const vTop = viewport.scrollTop
+            const vBottom = vTop + viewport.clientHeight
+
+            let bestPage = 0
+            let bestVisible = 0
+
+            pages.forEach((el) => {
+              const elTop = el.offsetTop
+              const elBottom = elTop + el.offsetHeight
+              const visibleTop = Math.max(vTop, elTop)
+              const visibleBottom = Math.min(vBottom, elBottom)
+              const visible = Math.max(0, visibleBottom - visibleTop)
+              if (visible > bestVisible) {
+                bestVisible = visible
+                bestPage = parseInt(el.id.replace('pw-', '')) || 0
+              }
+            })
+
+            if (bestPage > 0 && bestPage !== useLectioStore.getState().pdf.currentPage) {
+              useLectioStore.getState().setPdfPage(bestPage)
+            }
+      }
+
+      viewport.addEventListener('scroll', onScroll, { passive: true })
+      return () => viewport.removeEventListener('scroll', onScroll)
+  }, [pdf.totalPages])
 
   // Drag & drop
   const handleDragOver = (e: React.DragEvent) => e.preventDefault()
@@ -140,6 +205,8 @@ export function PdfPanel() {
                                                    label: `Fragmento — p. ${pageN}`,
                                                    timestamp: Date.now(),
               })
+              // Clear the pending snap so the pill in ChatPanel disappears
+              useLectioStore.getState().setPendingSnap(null)
             }
           }
 
@@ -161,7 +228,7 @@ export function PdfPanel() {
 
   return (
     <div
-    className="relative flex flex-1 flex-col"
+    className="relative flex h-full flex-col"
     style={{ background: '#000', cursor: pdf.snapActive ? 'crosshair' : undefined }}
     onDragOver={handleDragOver}
     onDrop={handleDrop}
@@ -256,11 +323,17 @@ export function PdfPanel() {
     </div>
     </div>
 
-    {/* Viewport — ref callback registers it with the hook */}
+    {/* Viewport */}
     <div
     ref={viewportRefCallback}
-    className="flex flex-1 flex-col items-center overflow-auto px-5 py-6 pb-20"
+    className="flex flex-col items-center px-5 py-6 pb-20"
     style={{
+      position: 'absolute',
+      top: 42,
+      bottom: 0,
+      left: 0,
+      right: 0,
+      overflowY: 'auto',
       background: '#000',
       scrollbarWidth: 'thin',
       scrollbarColor: '#222 transparent',
@@ -280,8 +353,6 @@ export function PdfPanel() {
       <line x1="15" y1="15" x2="12" y2="12" />
       </svg>
       </div>
-      <div className="text-[17px] font-normal text-[#333]">Arrastra tu PDF aquí</div>
-      <div className="font-mono text-[11px] text-[#2a2a2a]">o haz clic en "Abrir"</div>
       </div>
     )}
     </div>

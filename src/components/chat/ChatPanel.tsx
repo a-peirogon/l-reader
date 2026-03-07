@@ -11,7 +11,7 @@ const QUICK_CHIPS = [
   'Explica los términos técnicos',
 ]
 
-const CHIP_LABELS = ['Resumen', 'Conceptos', 'Esta página', 'Quiz', 'Glosario']
+const CHIP_LABELS = ['Resumen', 'Esta página', 'Quiz', 'Glosario']
 
 const MODEL_HINTS = { claude: 'sk-ant-', gemini: 'AIza' }
 
@@ -99,10 +99,6 @@ export function ChatPanel() {
           <div className="flex h-full flex-col items-center justify-center gap-2 px-5 py-6 text-center">
             <div className="text-[26px] text-[#2a2a2a]">◈</div>
             <div className="text-[13px] font-medium text-text-muted">Asistente de lectura</div>
-            <div className="font-mono text-[11px] leading-relaxed text-[#2e2e2e]">
-              Abre un PDF y pregunta.<br />
-              Pulsa <strong className="text-[#444]">S</strong> para capturar un área.
-            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-0.5">
