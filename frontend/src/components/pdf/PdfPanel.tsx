@@ -1,12 +1,15 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
 import { useLectioStore } from '@/store'
 import { usePdf } from '@/hooks/usePdf'
+import { SearchPanel } from '@/components/search/SearchPanel'
 
 const ZOOM_STEPS = [0.5, 0.75, 1.0, 1.3, 1.6, 2.0, 2.5]
 
 export function PdfPanel() {
   const { pdf, setSnapActive, setPendingSnap, addMessage, settings } = useLectioStore()
   const { setContainer, loadFile, captureArea, setPdfPage, setPdfScale } = usePdf()
+
+  const [searchOpen, setSearchOpen] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const snapState = useRef({
@@ -51,17 +54,18 @@ export function PdfPanel() {
         if (e.key === 's' || e.key === 'S') {
           useLectioStore.getState().setSnapActive(!useLectioStore.getState().pdf.snapActive)
         }
-        if (e.key === 'Escape') useLectioStore.getState().setSnapActive(false)
-          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextPage()
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage()
+        if (e.key === 'Escape') {
+          useLectioStore.getState().setSnapActive(false)
+          setSearchOpen(false)
+        }
+        if (e.key === 'f' || e.key === 'F') setSearchOpen((v) => !v)
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextPage()
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage()
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [nextPage, prevPage])
 
-  // ── Scroll viewport to the target page when currentPage changes via buttons ──
-  // We store the viewport element in a separate ref so the effect can access it
-  // without being coupled to the ref-callback pattern used by usePdf.
   const viewportRef = useRef<HTMLDivElement | null>(null)
 
   const viewportRefCallback = useCallback((el: HTMLDivElement | null) => {
@@ -69,9 +73,6 @@ export function PdfPanel() {
     setContainer(el)
   }, [setContainer])
 
-  // ── Scroll-to-page (buttons/keyboard) + scroll listener (mouse wheel) ─────
-  // A ref flag prevents the scroll listener from overwriting currentPage while
-  // a programmatic smooth-scroll is still animating.
   const programmingScrollRef = useRef(false)
   const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -81,7 +82,6 @@ export function PdfPanel() {
       const pageEl = viewport.querySelector(`#pw-${pdf.currentPage}`) as HTMLElement | null
       if (!pageEl) return
 
-        // Suppress the scroll listener for the duration of the animation (~600ms)
         programmingScrollRef.current = true
         if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current)
           suppressTimerRef.current = setTimeout(() => {
@@ -96,7 +96,6 @@ export function PdfPanel() {
     if (!viewport || !pdf.totalPages) return
 
       const onScroll = () => {
-        // Ignore scroll events triggered by programmatic scrollTo()
         if (programmingScrollRef.current) return
 
           const pages = viewport.querySelectorAll<HTMLElement>('.page-wrap')
@@ -136,7 +135,7 @@ export function PdfPanel() {
     handleFile(e.dataTransfer.files[0])
   }
 
-  // Snap mouse events — attached to window so they survive across page wraps
+  // Snap mouse events
   useEffect(() => {
     const getPos = (e: MouseEvent, el: HTMLElement) => {
       const r = el.getBoundingClientRect()
@@ -205,7 +204,6 @@ export function PdfPanel() {
                                                    label: `Fragmento — p. ${pageN}`,
                                                    timestamp: Date.now(),
               })
-              // Clear the pending snap so the pill in ChatPanel disappears
               useLectioStore.getState().setPendingSnap(null)
             }
           }
@@ -320,6 +318,23 @@ export function PdfPanel() {
       <div className="mx-0.5 h-4 w-px bg-[#1e1e1e]" />
       </>
     )}
+
+    {/* ── Search button ── */}
+    <button
+      onClick={() => setSearchOpen((v) => !v)}
+      title="Buscar papers (F)"
+      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[11px] tracking-[.04em] transition-all ${
+        searchOpen
+          ? 'border-[#2a2a2a] bg-[#1a1a1a] text-[#ccc]'
+          : 'border-transparent text-[#555] hover:border-[#2a2a2a] hover:bg-[#1a1a1a] hover:text-[#999]'
+      }`}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      Buscar
+    </button>
     </div>
     </div>
 
@@ -332,11 +347,12 @@ export function PdfPanel() {
       top: 42,
       bottom: 0,
       left: 0,
-      right: 0,
+      right: searchOpen ? 360 : 0,
       overflowY: 'auto',
       background: '#000',
       scrollbarWidth: 'thin',
       scrollbarColor: '#222 transparent',
+      transition: 'right 0.2s ease',
     }}
     >
     {!hasPdf && (
@@ -359,7 +375,10 @@ export function PdfPanel() {
 
     {/* Floating nav */}
     {hasPdf && (
-      <div className="absolute bottom-[18px] left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-[#1f1f1f] bg-[#111] px-2 py-1.5 opacity-0 shadow-[0_6px_20px_rgba(0,0,0,.5)] transition-opacity hover:opacity-100">
+      <div
+        className="absolute bottom-[18px] flex items-center gap-0.5 rounded-full border border-[#1f1f1f] bg-[#111] px-2 py-1.5 opacity-0 shadow-[0_6px_20px_rgba(0,0,0,.5)] transition-[opacity,left] hover:opacity-100"
+        style={{ left: searchOpen ? 'calc(50% - 180px)' : '50%', transform: 'translateX(-50%)' }}
+      >
       <button onClick={() => zoomBy(-0.2)} className="flex h-7 w-7 items-center justify-center rounded-full text-[#666] transition-all hover:bg-white/5 hover:text-[#ccc]">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
       </button>
@@ -376,6 +395,9 @@ export function PdfPanel() {
       </button>
       </div>
     )}
+
+    {/* Floating search panel */}
+    {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} />}
 
     {/* Shared file input used by ChatPanel's PDF open button */}
     <input

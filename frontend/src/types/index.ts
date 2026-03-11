@@ -3,10 +3,10 @@
 export type Provider = 'claude' | 'gemini'
 
 export type GeminiModel =
-  | 'gemini-2.5-flash'
-  | 'gemini-2.5-flash-lite'
-  | 'gemini-2.5-pro'
-  | 'gemini-2.0-flash'
+| 'gemini-2.5-flash'
+| 'gemini-2.5-flash-lite'
+| 'gemini-2.5-pro'
+| 'gemini-2.0-flash'
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +53,36 @@ export interface DocIndex {
   themes: string[]
   tfidf: Record<string, Record<number, number>>
 }
+
+// ─── ArXiv / Paper Intelligence ──────────────────────────────────────────────
+
+export interface ArxivMeta {
+  id: string            // e.g. "2301.12345"
+  title: string
+  authors: string[]
+  abstract: string
+  categories: string[]  // e.g. ["cs.LG", "cs.AI"]
+  published: string     // ISO date
+  updated: string
+  link: string          // https://arxiv.org/abs/ID
+}
+
+export interface Reference {
+  index: number
+  text: string          // raw reference text
+  arxivId?: string
+  doi?: string
+}
+
+export interface RelatedPaper {
+  title: string
+  authors: string[]
+  year: number
+  arxivId?: string
+  paperId: string       // Semantic Scholar ID
+}
+
+export type FetchStatus = 'idle' | 'loading' | 'ok' | 'none' | 'error'
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 
