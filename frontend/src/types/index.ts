@@ -57,19 +57,19 @@ export interface DocIndex {
 // ─── ArXiv / Paper Intelligence ──────────────────────────────────────────────
 
 export interface ArxivMeta {
-  id: string            // e.g. "2301.12345"
+  id: string
   title: string
   authors: string[]
   abstract: string
-  categories: string[]  // e.g. ["cs.LG", "cs.AI"]
-  published: string     // ISO date
+  categories: string[]
+  published: string
   updated: string
-  link: string          // https://arxiv.org/abs/ID
+  link: string
 }
 
 export interface Reference {
   index: number
-  text: string          // raw reference text
+  text: string
   arxivId?: string
   doi?: string
 }
@@ -79,7 +79,7 @@ export interface RelatedPaper {
   authors: string[]
   year: number
   arxivId?: string
-  paperId: string       // Semantic Scholar ID
+  paperId: string
 }
 
 export type FetchStatus = 'idle' | 'loading' | 'ok' | 'none' | 'error'
@@ -93,3 +93,56 @@ export interface AppSettings {
   language: 'español' | 'inglés' | 'automático'
   geminiModel: GeminiModel
 }
+
+// ─── Annotations ─────────────────────────────────────────────────────────────
+
+export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'text' | 'draw' | 'note'
+
+export type AnnotationColor =
+| '#FFD60A'
+| '#30D158'
+| '#FF6369'
+| '#64D2FF'
+| '#BF5AF2'
+
+export interface AnnotationBase {
+  id: string
+  page: number
+  color: AnnotationColor
+  createdAt: number
+}
+
+export interface HighlightAnnotation extends AnnotationBase {
+  type: 'highlight' | 'underline'
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface TextAnnotation extends AnnotationBase {
+  type: 'text'
+  x: number
+  y: number
+  text: string
+  fontSize: number
+}
+
+export interface DrawAnnotation extends AnnotationBase {
+  type: 'draw'
+  points: [number, number][]
+  strokeWidth: number
+}
+
+export interface NoteAnnotation extends AnnotationBase {
+  type: 'note'
+  x: number
+  y: number
+  text: string
+}
+
+export type Annotation =
+| HighlightAnnotation
+| TextAnnotation
+| DrawAnnotation
+| NoteAnnotation

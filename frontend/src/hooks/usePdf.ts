@@ -34,17 +34,16 @@ function renderTextSpans(tc: any, container: HTMLElement, vp: any, scale: number
       const [a, b, , , e, f] = item.transform
       const angle = Math.atan2(b, a)
       const fontSize = Math.sqrt(a * a + b * b) * scale
+      // item.width is in PDF units (same coord space as the transform).
+      // Multiply by scale to get CSS pixels. This fixes selection boxes
+      // that bleed past the actual glyph bounds.
+      const width = item.width != null ? item.width * scale : undefined
       span.style.cssText = [
-        'color:transparent',
-        'position:absolute',
-        'white-space:pre',
-        'cursor:text',
-        'transform-origin:0% 0%',
-        'user-select:text',
         `left:${e * scale}px`,
         `top:${vp.height - f * scale - fontSize}px`,
         `font-size:${fontSize}px`,
         `transform:rotate(${angle}rad)`,
+        ...(width != null ? [`width:${width}px`, 'overflow:hidden'] : []),
       ].join(';')
       container.appendChild(span)
   }
@@ -84,8 +83,7 @@ async function renderPage(doc: any, n: number, scale: number, container: HTMLEle
 
   const textLayer = document.createElement('div')
   textLayer.id = `tl-${n}`
-  textLayer.style.cssText =
-  'position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;line-height:1;z-index:2;pointer-events:none;'
+  textLayer.className = 'text-layer'
   try {
     const tc = await page.getTextContent()
     renderTextSpans(tc, textLayer, vp, scale)

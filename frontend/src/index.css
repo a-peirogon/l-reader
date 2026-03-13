@@ -33,3 +33,53 @@ input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
 }
+
+/* ── Text layer ─────────────────────────────────────────────────────────────
+ *  Spans sit over the canvas for copy/paste. They must be completely invisible
+ *  at all times — including when selected. Using -webkit-text-fill-color because
+ *  it is respected inside ::selection where plain `color` is often ignored.      */
+
+.text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  pointer-events: none;   /* container blocks events; spans opt back in */
+  z-index: 2;
+}
+
+.text-layer span {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+  pointer-events: auto;
+  line-height: 1;
+  height: 1em;
+  overflow: hidden;
+  -webkit-font-smoothing: none;
+  font-synthesis: none;
+}
+
+/* Selection — show only the highlight band, never the glyphs */
+.text-layer span::selection {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  background: rgba(100, 160, 255, 0.35);
+  text-shadow: none;
+}
+.text-layer span::-moz-selection {
+  color: transparent !important;
+  background: rgba(100, 160, 255, 0.35);
+  text-shadow: none;
+}
+
+/* Block text layer during snap / note tool — highlight uses text selection so must stay active */
+[data-tool-active="true"] .text-layer span {
+  pointer-events: none;
+  user-select: none;
+  cursor: crosshair;
+}

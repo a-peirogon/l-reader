@@ -9,30 +9,29 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="flex h-screen w-full items-stretch bg-black p-[10px]">
-      <div
-        ref={containerRef}
-        className="flex flex-1 overflow-hidden rounded-[16px] border border-[#1a1a1a]"
-      >
-        {/* Chat panel */}
-        <div
-          style={{ width: chatWidth, minWidth: 220, maxWidth: 480, flexShrink: 0 }}
-          className="rounded-l-[16px] overflow-hidden"
-        >
-          <ChatPanel />
-        </div>
+    <div className="flex h-screen w-full bg-black p-[8px]">
+    <div
+    ref={containerRef}
+    className="flex flex-1 min-w-0 gap-[6px]"
+    >
+    {/* Chat panel */}
+    <div
+    style={{ width: chatWidth, minWidth: 220, maxWidth: 480, flexShrink: 0 }}
+    className="h-full overflow-hidden rounded-[16px] border border-[#181818] bg-[#0a0a0a]"
+    >
+    <ChatPanel />
+    </div>
 
-        {/* Resizer */}
-        <Resizer onResize={setChatWidth} containerRef={containerRef} />
+    {/* Resizer */}
+    <Resizer onResize={setChatWidth} containerRef={containerRef} />
 
-        {/* PDF panel */}
-        <div className="pdf-panel flex-1 min-w-0 overflow-hidden rounded-r-[16px]">
-          <PdfPanel />
-        </div>
-      </div>
+    {/* PDF panel */}
+    <div className="h-full flex-1 min-w-0 overflow-hidden rounded-[16px] border border-[#181818] bg-black">
+    <PdfPanel />
+    </div>
+    </div>
 
-      {/* Settings modal */}
-      <SettingsModal />
+    <SettingsModal />
     </div>
   )
 }
