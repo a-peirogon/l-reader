@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 2px; }
+
+/* AI message bubble prose */
+.msg-ai strong { color: #e8e8e8; font-weight: 600; }
+.msg-ai em { color: #888; font-style: italic; }
+.msg-ai code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  background: #1a1a1a;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #bbb;
+}
+.msg-ai p { margin-bottom: 5px; }
+.msg-ai p:last-child { margin-bottom: 0; }
+.msg-ai ul { padding-left: 14px; margin: 4px 0; }
+
+/* Page wrap canvas invert */
+.page-wrap canvas { filter: invert(1); }
+
+/* Number inputs */
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
