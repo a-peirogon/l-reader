@@ -12,7 +12,7 @@ export default function App() {
     <div className="flex h-screen w-full bg-black p-[8px]">
     <div
     ref={containerRef}
-    className="flex flex-1 min-w-0 gap-[6px]"
+    className="flex flex-1 min-w-0"
     >
     {/* Chat panel */}
     <div

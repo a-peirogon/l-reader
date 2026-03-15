@@ -170,9 +170,11 @@ export function usePdf() {
     const sections = detectSections(texts, doc.numPages)
     store.setPdfIndex({ tfidf, sections })
 
-    const samplePages = [1, ...sections.slice(0, 6).map((s) => s.pages[0]).filter((p) => p !== 1)]
-    const sampleText = samplePages
-    .map((n) => `[p.${n}] ${(texts[n] || '').slice(0, 600)}`)
+    // Send full document text — Gemini 2.5 has 1M token context
+    const fullText = Object.keys(texts)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((n) => `[p.${n}]\n${texts[n]}`)
     .join('\n\n')
 
     store.addMessage({
@@ -187,22 +189,33 @@ export function usePdf() {
       chat.apiKeys.claude,
       chat.apiKeys.gemini,
       settings.geminiModel,
-      sampleText
+      fullText
     )
 
     if (meta) {
       const summary = `Documento: "${meta.title}" (${meta.type}, ${meta.language}). ${meta.summary} Temas: ${meta.themes.join(', ')}.`
       store.setPdfIndex({ summary, themes: meta.themes, ready: true })
+
+      const themeLine = meta.themes.length
+      ? `\n\n**Temas principales:** ${meta.themes.join(' · ')}`
+      : ''
+
+  store.addMessage({
+    id: `doc-summary-${Date.now()}`,
+                   role: 'assistant',
+                   type: 'text',
+                   content: `**${meta.title}**\n*${meta.type} · ${meta.language} · ${doc.numPages} páginas*\n\n${meta.summary}${themeLine}`,
+                   timestamp: Date.now(),
+  })
     } else {
       store.setPdfIndex({ ready: true })
+      store.addMessage({
+        id: `sys-${Date.now() + 1}`,
+                       type: 'system',
+                       content: `📄 "${file.name}" — ${doc.numPages} págs. listas.`,
+                       timestamp: Date.now(),
+      })
     }
-
-    store.addMessage({
-      id: `sys-${Date.now() + 1}`,
-                     type: 'system',
-                     content: `📄 "${file.name}" — ${doc.numPages} págs. listas.`,
-                     timestamp: Date.now(),
-    })
   }, [store])
 
   const captureArea = useCallback(

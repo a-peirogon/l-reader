@@ -96,7 +96,7 @@ export interface AppSettings {
 
 // ─── Annotations ─────────────────────────────────────────────────────────────
 
-export type AnnotationTool = 'none' | 'highlight' | 'underline' | 'text' | 'draw' | 'note'
+export type AnnotationTool = 'none' | 'highlight' | 'note'
 
 export type AnnotationColor =
 | '#FFD60A'
@@ -104,6 +104,14 @@ export type AnnotationColor =
 | '#FF6369'
 | '#64D2FF'
 | '#BF5AF2'
+
+export const ANNOTATION_COLORS: AnnotationColor[] = [
+  '#FFD60A',
+'#30D158',
+'#FF6369',
+'#64D2FF',
+'#BF5AF2',
+]
 
 export interface AnnotationBase {
   id: string
@@ -113,25 +121,12 @@ export interface AnnotationBase {
 }
 
 export interface HighlightAnnotation extends AnnotationBase {
-  type: 'highlight' | 'underline'
+  type: 'highlight'
   x: number
   y: number
   width: number
   height: number
-}
-
-export interface TextAnnotation extends AnnotationBase {
-  type: 'text'
-  x: number
-  y: number
-  text: string
-  fontSize: number
-}
-
-export interface DrawAnnotation extends AnnotationBase {
-  type: 'draw'
-  points: [number, number][]
-  strokeWidth: number
+  text?: string   // captured selected text
 }
 
 export interface NoteAnnotation extends AnnotationBase {
@@ -141,8 +136,4 @@ export interface NoteAnnotation extends AnnotationBase {
   text: string
 }
 
-export type Annotation =
-| HighlightAnnotation
-| TextAnnotation
-| DrawAnnotation
-| NoteAnnotation
+export type Annotation = HighlightAnnotation | NoteAnnotation

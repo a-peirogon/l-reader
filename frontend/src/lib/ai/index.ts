@@ -38,8 +38,8 @@ export function buildSystemPrompt(opts: BuildSystemOpts): string {
     const next = pageText[currentPage + 1]
     sys += `\n\n## Texto en pantalla`
     if (prev) sys += `\n\n[p.${currentPage - 1} — final]\n${prev.slice(-400)}`
-    sys += `\n\n[p.${currentPage}]\n${curr.slice(0, 2800)}`
-    if (next) sys += `\n\n[p.${currentPage + 1} — inicio]\n${next.slice(0, 400)}`
+      sys += `\n\n[p.${currentPage}]\n${curr.slice(0, 2800)}`
+      if (next) sys += `\n\n[p.${currentPage + 1} — inicio]\n${next.slice(0, 400)}`
   }
 
   sys += `\n\n## Instrucciones\n- Cita páginas específicas cuando respondas.\n- Si la respuesta está en el texto proporcionado, úsalo directamente.\n- Si necesitas páginas no incluidas, indícalo.\n- Sé conciso pero completo.`
@@ -78,9 +78,9 @@ export function buildApiMessages(opts: BuildMessagesOpts): ApiMessage[] {
 
   // Retrieve relevant extra pages
   const relevant =
-    index.ready && userText
-      ? retrievePages(userText, index, currentPage, totalPages, 3)
-      : nearbyPages(currentPage, totalPages, 2)
+  index.ready && userText
+  ? retrievePages(userText, index, currentPage, totalPages, 3)
+  : nearbyPages(currentPage, totalPages, 2)
 
   const extraPages = relevant.filter(
     (p) => p !== currentPage && p !== currentPage - 1 && p !== currentPage + 1
@@ -120,24 +120,24 @@ export function buildApiMessages(opts: BuildMessagesOpts): ApiMessage[] {
   const out: ApiMessage[] = []
   for (const m of historyMsgs) {
     if (m.type === 'system') continue
-    if (m.type === 'snap') {
-      out.push({
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: 'image/png',
-              data: m.dataUrl.split(',')[1],
+      if (m.type === 'snap') {
+        out.push({
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/png',
+                data: m.dataUrl.split(',')[1],
+              },
             },
-          },
-          { type: 'text', text: m.label },
-        ],
-      })
-    } else {
-      out.push({ role: m.role as 'user' | 'assistant', content: m.content })
-    }
+            { type: 'text', text: m.label },
+          ],
+        })
+      } else {
+        out.push({ role: m.role as 'user' | 'assistant', content: m.content })
+      }
   }
 
   // Build current user message
@@ -156,8 +156,8 @@ export function buildApiMessages(opts: BuildMessagesOpts): ApiMessage[] {
 
   if (extraPages.length > 0 && settings.sendPageText) {
     const ctxBlock = extraPages
-      .map((p) => `[p.${p}]\n${(pageText[p] || '').slice(0, 800)}`)
-      .join('\n\n')
+    .map((p) => `[p.${p}]\n${(pageText[p] || '').slice(0, 800)}`)
+    .join('\n\n')
     contentParts.push({
       type: 'text',
       text: `<contexto_relevante>\n${ctxBlock}\n</contexto_relevante>\n\n${userText || 'Explica este fragmento.'}`,
@@ -172,9 +172,9 @@ export function buildApiMessages(opts: BuildMessagesOpts): ApiMessage[] {
   out.push({
     role: 'user',
     content:
-      contentParts.length === 1 && contentParts[0].type === 'text'
-        ? contentParts[0].text
-        : contentParts,
+    contentParts.length === 1 && contentParts[0].type === 'text'
+  ? contentParts[0].text
+  : contentParts,
   })
 
   return out
@@ -200,7 +200,7 @@ export async function callClaude(
   })
   const data = await res.json()
   if (data.error) throw new Error(data.error.message)
-  return data.content.map((b: any) => b.text || '').join('')
+    return data.content.map((b: any) => b.text || '').join('')
 }
 
 // ─── Gemini API ──────────────────────────────────────────────────────────────
@@ -215,12 +215,12 @@ export async function callGemini(
   const contents = messages.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: Array.isArray(m.content)
-      ? m.content.map((p: any) =>
-          p.type === 'text'
-            ? { text: p.text }
-            : { inlineData: { mimeType: p.source.media_type, data: p.source.data } }
-        )
-      : [{ text: m.content }],
+    ? m.content.map((p: any) =>
+    p.type === 'text'
+    ? { text: p.text }
+    : { inlineData: { mimeType: p.source.media_type, data: p.source.data } }
+    )
+    : [{ text: m.content }],
   }))
 
   const res = await fetch(
@@ -237,10 +237,10 @@ export async function callGemini(
   )
   const data = await res.json()
   if (data.error) throw new Error(data.error.message)
-  return (
-    data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') ||
-    '(sin respuesta)'
-  )
+    return (
+      data.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') ||
+      '(sin respuesta)'
+    )
 }
 
 // ─── Doc indexing (one-shot, cheap model) ────────────────────────────────────
@@ -259,17 +259,19 @@ export async function buildDocSummary(
   geminiModel: string,
   sampleText: string
 ): Promise<DocMeta | null> {
-  const prompt = `Analiza este documento y devuelve SOLO este JSON (sin markdown):
-{
-  "title": "título o tema principal",
-  "type": "tipo de documento (paper/libro/informe/manual/otro)",
-  "language": "idioma principal",
-  "summary": "resumen en 2-3 oraciones",
-  "themes": ["tema1","tema2","tema3"]
-}
+  const system = 'Eres un asistente experto en análisis de documentos académicos. Respondes siempre en español. Devuelves SOLO JSON válido, sin markdown, sin texto adicional.'
 
-TEXTO DE MUESTRA:
-${sampleText}`
+  const prompt = `Analiza el siguiente documento completo en profundidad y devuelve SOLO este JSON (sin markdown ni texto extra):
+  {
+    "title": "título exacto del documento",
+    "type": "paper | libro | informe | manual | otro",
+    "language": "idioma original del documento",
+    "summary": "resumen detallado EN ESPAÑOL de 5-7 oraciones: (1) qué problema aborda, (2) qué propone, (3) metodología principal, (4) resultados clave, (5) conclusión o impacto",
+    "themes": ["tema1", "tema2", "tema3", "tema4", "tema5"]
+  }
+
+  DOCUMENTO:
+  ${sampleText}`
 
   let raw = ''
 
@@ -285,8 +287,8 @@ ${sampleText}`
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 400,
-          system: 'Responde SOLO con el JSON solicitado, sin texto adicional.',
+          max_tokens: 1200,
+          system,
           messages: [{ role: 'user', content: prompt }],
         }),
       })
@@ -299,20 +301,29 @@ ${sampleText}`
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 400 },
+            generationConfig: {
+              maxOutputTokens: 1200,
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
           }),
         }
       )
       const d = await res.json()
-      if (!d.error)
-        raw =
-          d.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim() || ''
+      if (d.error) {
+        console.error('[buildDocSummary] Gemini error:', JSON.stringify(d.error))
+        return null
+      }
+      raw = d.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim() || ''
     }
 
     if (!raw) return null
-    return JSON.parse(raw.replace(/^```json?\n?/, '').replace(/```$/, ''))
-  } catch {
+      const clean = raw.replace(/^```(?:json)?[\s\S]*?\n/, '').replace(/\n?```$/, '').trim()
+      return JSON.parse(clean)
+  } catch (err) {
+    console.error('[buildDocSummary] error:', err, '| raw:', raw?.slice(0, 300))
     return null
   }
 }

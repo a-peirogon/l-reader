@@ -65,6 +65,29 @@ export function ChatPanel() {
       return () => document.removeEventListener('mousedown', handler)
   }, [modelDropOpen])
 
+  // Inject selected PDF text into chat input from AnnotationLayer
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail.text as string
+      if (!text) return
+        setTab('asistente')
+        setInput(prev => {
+          const next = prev ? `${prev}\n\n"${text}"` : `"${text}"`
+          // Resize textarea after state update
+          requestAnimationFrame(() => {
+            if (textareaRef.current) {
+              textareaRef.current.style.height = 'auto'
+              textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 90) + 'px'
+          textareaRef.current.focus()
+            }
+          })
+          return next
+        })
+    }
+    window.addEventListener('lectio:inject-text', handler)
+    return () => window.removeEventListener('lectio:inject-text', handler)
+  }, [])
+
   const handleSend = useCallback(() => {
     if (!input.trim() && !pdf.pendingSnap) return
       send(input.trim())

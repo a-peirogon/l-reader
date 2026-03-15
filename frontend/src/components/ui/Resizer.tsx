@@ -15,33 +15,33 @@ export function Resizer({ onResize, containerRef }: ResizerProps) {
       document.body.style.userSelect = 'none'
       document.body.style.cursor = 'col-resize'
 
-      const onMove = (ev: MouseEvent) => {
-        if (!active.current || !containerRef.current) return
-        const containerLeft = containerRef.current.getBoundingClientRect().left
-        const w = ev.clientX - containerLeft - 10
-        if (w >= 220 && w <= 480) onResize(w)
-      }
+  const onMove = (ev: MouseEvent) => {
+    if (!active.current || !containerRef.current) return
+      const containerLeft = containerRef.current.getBoundingClientRect().left
+      const w = ev.clientX - containerLeft - 10
+      if (w >= 220 && w <= 480) onResize(w)
+  }
 
-      const onUp = () => {
-        active.current = false
-        document.body.style.userSelect = ''
-        document.body.style.cursor = ''
-        window.removeEventListener('mousemove', onMove)
-        window.removeEventListener('mouseup', onUp)
-      }
+  const onUp = () => {
+    active.current = false
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+  window.removeEventListener('mousemove', onMove)
+  window.removeEventListener('mouseup', onUp)
+  }
 
-      window.addEventListener('mousemove', onMove)
-      window.addEventListener('mouseup', onUp)
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
     },
     [onResize, containerRef]
   )
 
   return (
     <div
-      onMouseDown={onMouseDown}
-      className="group relative z-10 w-px flex-shrink-0 cursor-col-resize bg-surface-border transition-colors hover:bg-[#3a3a3a]"
+    onMouseDown={onMouseDown}
+    className="relative z-10 w-[6px] flex-shrink-0 cursor-col-resize"
     >
-      <div className="absolute inset-y-0 -left-[5px] -right-[5px]" />
+    <div className="absolute inset-y-0 -left-[2px] -right-[2px]" />
     </div>
   )
 }
